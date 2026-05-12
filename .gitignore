@@ -1,0 +1,24 @@
+__pycache__/
+*.pyc
+.env
+*.egg-info/
+dist/
+build/
+.venv/
+.pytest_cache/
+.coverage
+output/
+review_queue/*.json
+knowledge/issuers/*.md
+!knowledge/issuers/_template.md
+knowledge/log.md
+input/
+*.png
+*.pdf
+
+# Tool-specific agent config (AGENTS.md is the cross-tool standard; others are per-dev)
+CLAUDE.md
+.claude/
+.cursor/
+.cursorrules
+.github/copilot-instructions.md
