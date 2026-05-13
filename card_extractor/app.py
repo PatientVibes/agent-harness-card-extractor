@@ -226,7 +226,7 @@ async def submit_review(item_id: str, body: ReviewSubmission):
 async def get_wiki_page(issuer: str):
     durable = _durable()
     content = durable.wiki.lookup(issuer)
-    if content is None:
+    if not content:
         raise HTTPException(404, f"No wiki page for '{issuer}'")
     return {"issuer": issuer, "content": content}
 

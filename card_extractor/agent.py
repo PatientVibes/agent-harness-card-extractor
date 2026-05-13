@@ -45,6 +45,7 @@ from card_extractor.models import (
     CardExtraction,
     CardRegion,
     CardSideVerdict,
+    IssuerRules,
     ValidationResult,
 )
 from card_extractor.prompts import (
@@ -55,17 +56,18 @@ from card_extractor.prompts import (
     EXTRACTION_WITH_CONTEXT_PROMPT,
     VERIFICATION_PROMPT,
 )
-from card_extractor.rendering import (
+from pdf_vlm_renderer import (
     crop_region,
     draw_debug_boxes,
     encode_image_base64,
     pdf_to_page_pngs,
     preprocess_for_vlm,
 )
+from card_extractor.coords import norm_to_px, norm_to_px_for_image
 from card_extractor.review import ReviewQueue
 from pipeline_trace import PipelineTrace
 from card_extractor.validation import validate_extraction
-from card_extractor.wiki import CardKnowledgeWiki
+from knowledge_wiki import KnowledgeWiki
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +89,7 @@ class DurableContext:
     """
 
     config: GatewayConfig
-    wiki: CardKnowledgeWiki
+    wiki: KnowledgeWiki
     review_queue: ReviewQueue
     output_dir: Path = field(default_factory=lambda: Path("./output"))
     render_dpi: int = 300
@@ -108,7 +110,7 @@ class DurableContext:
 
         return cls(
             config=config,
-            wiki=CardKnowledgeWiki(wiki_dir),
+            wiki=KnowledgeWiki(wiki_dir, entity_dir_name="issuers", rules_model=IssuerRules),
             review_queue=ReviewQueue(queue_dir),
             output_dir=output_dir,
             render_dpi=int(os.environ.get("RENDER_DPI", "300")),
@@ -133,7 +135,7 @@ class AgentContext:
     """
 
     config: GatewayConfig
-    wiki: CardKnowledgeWiki
+    wiki: KnowledgeWiki
     review_queue: ReviewQueue
     tracker: TokenTracker = field(default_factory=TokenTracker)
     trace: Optional[PipelineTrace] = None
@@ -457,13 +459,13 @@ async def _extract_single_card(
     # corrections or auto-promoted patterns. Observation text alone is
     # noise that burns tokens without improving accuracy.
     if extraction.issuer_hint:
-        wiki_hints = ctx.wiki.get_extraction_hints(extraction.issuer_hint, extraction.card_type)
+        wiki_hints = ctx.wiki.get_rules(extraction.issuer_hint, sub_kind=extraction.card_type)
 
         has_validation_rules = bool(
             wiki_hints.get("patterns") or wiki_hints.get("required_fields")
         )
         if has_validation_rules:
-            wiki_context = ctx.wiki.lookup(extraction.issuer_hint, extraction.card_type)
+            wiki_context = ctx.wiki.lookup(extraction.issuer_hint, sub_kind=extraction.card_type)
             if wiki_context:
                 logger.info(
                     "Re-extracting with wiki rules for %s", extraction.issuer_hint,
@@ -618,7 +620,11 @@ async def process_page(
     # Save debug visualization
     try:
         outlined_path = ctx.output_dir / f"{base_name}_outlined.png"
-        draw_debug_boxes(page_png, region.boxes, outlined_path)
+        from PIL import Image as _PILImage
+        with _PILImage.open(page_png) as _im:
+            _w, _h = _im.size
+        px_boxes = [norm_to_px(b, _w, _h) for b in region.boxes]
+        draw_debug_boxes(page_png, px_boxes, outlined_path)
     except Exception as e:
         logger.warning("Failed to draw debug boxes: %s", e)
 
@@ -631,7 +637,9 @@ async def process_page(
     crops: list[tuple[Path, BoundingBox]] = []
     for idx, box in enumerate(candidate_boxes, start=1):
         out_path = ctx.output_dir / f"{base_name}_boxed_{idx}.png"
-        result = crop_region(page_png, box, out_path, pad_px=ctx.crop_pad_px)
+        result = crop_region(
+            page_png, norm_to_px_for_image(box, page_png), out_path, pad_px=ctx.crop_pad_px,
+        )
         if result is not None:
             crops.append((result, box))
 
@@ -764,10 +772,10 @@ async def _update_wiki_observation(
 
     try:
         await ctx.wiki.write_observation(
-            issuer=extraction.issuer_hint,
-            card_type=extraction.card_type,
+            entity_key=extraction.issuer_hint,
+            sub_kind=extraction.card_type,
             observation=observation,
-            source_pdf=source_pdf,
+            source_ref=source_pdf,
             confidence=extraction.confidence,
         )
     except Exception as e:

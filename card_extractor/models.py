@@ -14,9 +14,13 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class BoundingBox(BaseModel):
-    """A single detected card region in normalized [0, 1] coordinates.
+    """VLM-prompt contract: normalized 0–1 coords with a card_type label.
 
-    Coordinates are clamped to [0, 1] since VLMs occasionally return
+    Distinct from ``pdf_vlm_renderer.BoundingBox`` (pixel coords + confidence) —
+    that type is used at the rendering boundary only. Convert via
+    :func:`card_extractor.coords.norm_to_px`.
+
+    Coordinates are clamped to ``[0, 1]`` since VLMs occasionally return
     values slightly out of range (e.g., 1.01, -0.005).
     """
 

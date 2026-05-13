@@ -24,12 +24,13 @@ def ctx(tmp_path):
     if not config.available:
         pytest.skip("AI_GATEWAY_KEY not set")
 
-    from card_extractor.wiki import CardKnowledgeWiki
+    from card_extractor.models import IssuerRules
     from card_extractor.review import ReviewQueue
+    from knowledge_wiki import KnowledgeWiki
 
     return AgentContext(
         config=config,
-        wiki=CardKnowledgeWiki(tmp_path / "wiki"),
+        wiki=KnowledgeWiki(tmp_path / "wiki", entity_dir_name="issuers", rules_model=IssuerRules),
         review_queue=ReviewQueue(tmp_path / "queue"),
         output_dir=tmp_path / "output",
     )
@@ -79,7 +80,7 @@ async def test_process_single_pdf(ctx, sample_pdf):
     assert len(output_files) > 0
 
     # Verify wiki was updated (if issuer_hint was found)
-    issuer_pages = list((ctx.wiki.wiki_dir / "issuers").glob("*.md"))
+    issuer_pages = list((ctx.wiki.root_dir / "issuers").glob("*.md"))
     # Filter out template
     issuer_pages = [p for p in issuer_pages if p.name != "_template.md"]
     # May or may not have wiki entries depending on issuer_hint quality

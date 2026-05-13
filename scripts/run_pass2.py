@@ -22,7 +22,8 @@ from card_extractor.agent import AgentContext, process_pdf
 from card_extractor.ai_client import GatewayConfig
 from card_extractor.review import ReviewQueue
 from pipeline_trace import PipelineTrace
-from card_extractor.wiki import CardKnowledgeWiki
+from card_extractor.models import IssuerRules
+from knowledge_wiki import KnowledgeWiki
 
 
 async def main():
@@ -57,7 +58,7 @@ async def main():
 
     ctx = AgentContext(
         config=config,
-        wiki=CardKnowledgeWiki(wiki_dir),
+        wiki=KnowledgeWiki(wiki_dir, entity_dir_name="issuers", rules_model=IssuerRules),
         review_queue=ReviewQueue(queue_dir),
         trace=trace,
         output_dir=output_dir,

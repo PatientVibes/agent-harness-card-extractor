@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 from card_extractor.models import CardExtraction, ReviewItem, ValidationResult
-from card_extractor.wiki import CardKnowledgeWiki
+from knowledge_wiki import KnowledgeWiki
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +109,7 @@ class ReviewQueue:
         )
         return item
 
-    async def compile_reviewed_to_wiki(self, wiki: CardKnowledgeWiki) -> int:
+    async def compile_reviewed_to_wiki(self, wiki: KnowledgeWiki) -> int:
         """Compile all corrected reviews into wiki pages. Returns count compiled."""
         compiled = 0
         for path in self.queue_dir.glob("*.json"):
@@ -144,12 +144,17 @@ class ReviewQueue:
                         diffs.append(f"  {field}: '{ov}' → '{cv}'")
 
             if diffs:
-                await wiki.compile_correction(
-                    issuer=issuer,
-                    card_type=card_type,
-                    original_text="\n".join(diffs),
-                    correction_text="See field-level diffs above",
-                    source_pdf=item.source_pdf,
+                # The new tool's promote_human_correction is synchronous and takes
+                # a frontmatter_patch dict (any extra audit fields go into it).
+                # The free-form diff text is recorded as a frontmatter field so it
+                # lands in the page; the tool also appends its own audit note.
+                wiki.promote_human_correction(
+                    entity_key=issuer,
+                    sub_kind=card_type,
+                    frontmatter_patch={
+                        "last_correction_diff": "\n".join(diffs),
+                        "last_correction_source": item.source_pdf,
+                    },
                 )
                 compiled += 1
 

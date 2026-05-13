@@ -15,8 +15,9 @@ from card_extractor.models import (
     GovernmentData,
     InsuranceData,
 )
+from card_extractor.models import IssuerRules
 from card_extractor.review import ReviewQueue
-from card_extractor.wiki import CardKnowledgeWiki
+from knowledge_wiki import KnowledgeWiki
 
 
 @pytest.fixture
@@ -24,7 +25,7 @@ def mock_ctx(tmp_path):
     """Create an AgentContext with temp directories for testing."""
     return AgentContext(
         config=GatewayConfig(url="http://fake", api_key="fake"),
-        wiki=CardKnowledgeWiki(tmp_path / "wiki"),
+        wiki=KnowledgeWiki(tmp_path / "wiki", entity_dir_name="issuers", rules_model=IssuerRules),
         review_queue=ReviewQueue(tmp_path / "queue"),
         output_dir=tmp_path / "output",
     )
@@ -95,7 +96,7 @@ class TestWikiObservation:
         )
         await _update_wiki_observation(ext, mock_ctx, "DOC-001.pdf")
         content = mock_ctx.wiki.lookup("UnitedHealthcare")
-        assert content is not None
+        assert content
         # PII is masked: 302307904 -> #########
         assert "#########" in content
         assert "302307904" not in content  # raw PII must NOT appear
@@ -113,7 +114,7 @@ class TestWikiObservation:
         )
         await _update_wiki_observation(ext, mock_ctx, "DOC-002.pdf")
         content = mock_ctx.wiki.lookup("Florida DMV")
-        assert content is not None
+        assert content
         # PII is masked: D123456 -> A######
         assert "A######" in content or "id_number pattern" in content
         assert "D123456" not in content  # raw PII must NOT appear
