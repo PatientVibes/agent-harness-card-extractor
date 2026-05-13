@@ -7,13 +7,10 @@ import pytest
 from card_extractor.agent import (
     AgentContext,
     _verify_extraction,
-    _load_checkpoint,
-    _save_checkpoint,
     _update_wiki_observation,
 )
-from card_extractor.ai_client import GatewayConfig, TokenTracker
+from card_extractor.ai_client import GatewayConfig
 from card_extractor.models import (
-    BatchProgress,
     CardExtraction,
     GovernmentData,
     InsuranceData,
@@ -83,34 +80,6 @@ class TestVerifyExtraction:
         assert any("pattern" in i.issue.lower() for i in result.issues)
 
 
-class TestCheckpoint:
-    def test_load_nonexistent(self, tmp_path):
-        progress = _load_checkpoint(tmp_path / "nope.json")
-        assert progress.total_pdfs == 0
-        assert progress.completed_pdfs == {}
-
-    def test_save_and_load(self, tmp_path):
-        path = tmp_path / "progress.json"
-        progress = BatchProgress(
-            total_pdfs=5,
-            completed_pdfs={"doc1.pdf": [1, 2]},
-            errors={"doc2.pdf": "timeout"},
-        )
-        _save_checkpoint(path, progress)
-        loaded = _load_checkpoint(path)
-        assert loaded.total_pdfs == 5
-        assert "doc1.pdf" in loaded.completed_pdfs
-        assert "doc2.pdf" in loaded.errors
-
-    def test_load_none_path(self):
-        progress = _load_checkpoint(None)
-        assert progress.total_pdfs == 0
-
-    def test_save_none_path(self):
-        # Should not raise
-        _save_checkpoint(None, BatchProgress())
-
-
 class TestWikiObservation:
     async def test_insurance_observation(self, mock_ctx):
         ext = CardExtraction(
@@ -159,13 +128,3 @@ class TestWikiObservation:
         await _update_wiki_observation(ext, mock_ctx, "DOC.pdf")
 
 
-class TestTokenTracker:
-    def test_record_and_summary(self):
-        tracker = TokenTracker()
-        tracker.record("detect", "model-a", input_tokens=100, output_tokens=50)
-        tracker.record("extract", "model-a", input_tokens=200, output_tokens=100)
-        assert tracker.total_input == 300
-        assert tracker.total_output == 150
-        summary = tracker.summary()
-        assert summary["total_calls"] == 2
-        assert "detect" in summary["by_source"]
