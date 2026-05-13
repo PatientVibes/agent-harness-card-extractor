@@ -113,17 +113,23 @@ python scripts/run_batch.py --input ./input/ --output ./output/
 | Component | Implementation |
 |---|---|
 | Orchestration | Sequential per-page pipeline + orchestrator dispatching subagents for parallel PDFs |
-| Tools | Pipeline stages call VLM directly with `with_structured_output(PydanticModel)` |
-| Memory | `CardKnowledgeWiki` (Karpathy-style per-issuer page accumulation) |
+| Tools | Composed from toolbox repos: `pdf_vlm_renderer` (PDF → PNG + crop + debug overlay) + `knowledge_wiki` (issuer wiki) + `review_queue` + `review_workflow.py` (flag → pending → reviewed lifecycle) + `pipeline_trace` (JSONL events) + vendored VLM prompts under `card_extractor/prompts/` |
+| Memory | `knowledge_wiki.KnowledgeWiki` (Karpathy-style per-issuer page accumulation) |
 | Context mgmt | Wiki lookup gates re-extraction with known patterns; otherwise no LLM-side context |
-| Prompt construction | `card_extractor/prompts.py` — DETECTION, VERIFICATION, EXTRACTION, AUDIT, RETRY prompts |
+| Prompt construction | VLM prompts vendored from the `vlm-card-extraction-prompts` skill into `card_extractor/prompts/` as `.md` files (DETECTION, VERIFICATION, EXTRACTION, EXTRACTION_RETRY, EXTRACTION_WITH_CONTEXT, AUDIT) |
 | Output parsing | Pydantic models (`CardRegion`, `CardSideVerdict`, `CardExtraction`, `AuditResult`, `ValidationResult`) |
-| State | `BatchProgress` checkpoint JSON per batch; wiki files versioned per issuer |
-| Error handling | `retry_async` with `is_fatal` classifier; per-PDF subagent isolation |
+| State | `llm_utils.save_checkpoint` / `load_checkpoint` with `BatchProgress` JSON wrap; wiki files versioned per issuer |
+| Error handling | `llm_utils.retry_async` with `not is_transient(...)` as the fatal classifier; per-PDF subagent isolation |
 | Guardrails | Validation filters (placeholder IDs, sequential digits); confidence-adjustment from validation |
 | Verification | `_verify_extraction` + 1 retry with issue feedback; conditional page audit |
 | Subagent orchestration | Semaphore-bounded `_subagent` per PDF; `_full_page_fallback` when detection finds no cards |
-| Token tracking | `TokenTracker` records every VLM call; `PipelineTrace` writes JSONL trace per run |
+| Token tracking | `token_tracker.TokenTracker` records every VLM call; `pipeline_trace.PipelineTrace` writes JSONL trace per run via generic `trace.event(event_type=..., ...)` |
+
+## Related skills
+
+- [`vlm-card-extraction-prompts`](https://github.com/PatientVibes/agent-skills/tree/master/plugins/vlm-card-extraction-prompts) — the 6 VLM prompts under `card_extractor/prompts/` are vendored verbatim from this skill. Edit upstream + re-vendor; do not edit the .md files in this dir.
+- [`verification-retry-loop`](https://github.com/PatientVibes/agent-skills/tree/master/plugins/verification-retry-loop) — pattern reference for the harness's VLM detection → verification → extraction loop.
+- [`human-review-loop`](https://github.com/PatientVibes/agent-skills/tree/master/plugins/human-review-loop) — pattern reference for the flag → pending → reviewed lifecycle implemented by `review_workflow.py` on top of `agent-tool-review-queue`.
 
 ## License
 
