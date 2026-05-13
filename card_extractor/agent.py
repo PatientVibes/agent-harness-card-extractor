@@ -17,7 +17,6 @@ Enhancements over v1:
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import os
 import time
@@ -26,14 +25,18 @@ from pathlib import Path
 from typing import Optional
 
 from langchain_core.messages import HumanMessage
+from llm_utils import (
+    is_transient,
+    load_checkpoint,
+    retry_async,
+    save_checkpoint,
+)
+from token_tracker import TokenTracker
 
 from card_extractor.ai_client import (
     GatewayConfig,
-    TokenTracker,
     create_extraction_llm,
     create_vlm,
-    retry_async,
-    is_fatal,
 )
 from card_extractor.models import (
     AuditResult,
@@ -420,30 +423,12 @@ async def _retry_extraction(
 
 
 # ---------------------------------------------------------------------------
-# Checkpoint / resume (from chorus-agent agent.py:872-896)
+# Checkpoint / resume — uses llm_utils.save_checkpoint / load_checkpoint.
+# Helpers used to live inline; extracted to `llm_utils` per the agent-toolbox
+# extraction (2026-05-12). load_checkpoint returns {} for missing/None paths,
+# so BatchProgress(**load_checkpoint(...)) yields a default BatchProgress() in
+# the absent-checkpoint case.
 # ---------------------------------------------------------------------------
-
-
-def _load_checkpoint(progress_path: Optional[Path]) -> BatchProgress:
-    if progress_path and progress_path.exists():
-        try:
-            data = json.loads(progress_path.read_text(encoding="utf-8"))
-            return BatchProgress(**data)
-        except Exception as e:
-            logger.warning("Failed to load checkpoint %s: %s", progress_path, e)
-    return BatchProgress()
-
-
-def _save_checkpoint(progress_path: Optional[Path], progress: BatchProgress) -> None:
-    if not progress_path:
-        return
-    try:
-        progress.timestamp = time.time()
-        progress_path.write_text(
-            progress.model_dump_json(indent=2), encoding="utf-8",
-        )
-    except Exception as e:
-        logger.warning("Failed to save checkpoint: %s", e)
 
 
 # ---------------------------------------------------------------------------
@@ -605,7 +590,7 @@ async def process_page(
         region = await detect_cards(detection_image, ctx)
     except Exception as e:
         logger.error("Detection failed on %s: %s", page_png.name, e)
-        if is_fatal(e):
+        if not is_transient(e):
             raise
         return results
 
@@ -678,7 +663,7 @@ async def process_page(
 
         except Exception as e:
             logger.error("Extraction failed on %s: %s", crop_path.name, e)
-            if is_fatal(e):
+            if not is_transient(e):
                 raise
             continue
 
@@ -843,7 +828,7 @@ async def process_batch(
     concurrency. Failed PDFs are isolated and don't block the batch.
     Progress is checkpointed after each completion.
     """
-    progress = _load_checkpoint(progress_path)
+    progress = BatchProgress(**load_checkpoint(progress_path))
     progress.total_pdfs = len(pdf_paths)
 
     pending = [p for p in pdf_paths if p.name not in progress.completed_pdfs]
@@ -878,7 +863,8 @@ async def process_batch(
                 idx for idx in range(len(extractions))
             ]
 
-        _save_checkpoint(progress_path, progress)
+        progress.timestamp = time.time()
+        save_checkpoint(progress_path, progress.model_dump())
 
     logger.info(
         "Orchestrator complete: %d/%d PDFs, %d errors",
