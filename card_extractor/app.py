@@ -72,7 +72,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Card Extractor", version="0.1.0", lifespan=lifespan)
 
 
-def _durable(request_app: FastAPI = None) -> DurableContext:
+def _durable() -> DurableContext:
     """Accessor for the durable context stored on app.state."""
     return app.state.durable
 

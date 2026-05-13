@@ -107,10 +107,12 @@ Standard choice. Integration tests are marked `@pytest.mark.integration` so the 
 
 ### Step 1: Render (pypdfium2)
 
-PDF → PNG at 300 DPI. We lowered to 200 DPI after experiments showed it:
-- Eliminated 413 Payload Too Large failures for large pages
-- Reduced tokens per VLM call by ~45%
-- Did not hurt extraction accuracy (card text is large enough at 200 DPI)
+PDF → PNG at 300 DPI (the `pdf_vlm_renderer` tool default; tunable via the `RENDER_DPI` env var). Earlier POC experiments lowered this to 200 DPI to:
+- Eliminate 413 Payload Too Large failures for large pages
+- Reduce tokens per VLM call by ~45%
+- Without hurting extraction accuracy (card text is large enough at 200 DPI)
+
+The public reference defaults to 300 to match the upstream `pdf_vlm_renderer` default; production deployments dealing with large pages should set `RENDER_DPI=200`.
 
 This is a **deterministic, code-only** step. No LLM involved.
 
@@ -341,7 +343,7 @@ Known gap. One sample card photographed on a black surface fails detection becau
 
 - **Unit tests** (71, no API key): every model, every validation rule, every wiki operation, every tool path with mock context
 - **Integration tests** (marked): end-to-end pipeline run against one sample PDF, requires `AI_GATEWAY_KEY`
-- **Experiment runner**: parameter sweeps across DPI, temperature, confidence thresholds, padding — generates comparable metrics, used to find the optimal config (DPI=200, temp=0.0, pad=5)
+- **Experiment runner**: parameter sweeps across DPI, temperature, confidence thresholds, padding — generates comparable metrics, used to find the optimal config (DPI=200 for large-page workloads, temp=0.0, pad=5; public reference defaults to DPI=300 to match the upstream tool)
 
 Tests check *behavior*, not implementation. Most validations check "this input produces this output" rather than "this function is called with these arguments." Refactor-friendly.
 

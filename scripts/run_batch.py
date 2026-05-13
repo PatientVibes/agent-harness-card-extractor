@@ -45,9 +45,6 @@ async def main(args: argparse.Namespace) -> int:
         logger.error("Input directory not found: %s", input_dir)
         return 1
 
-    ctx.output_dir = Path(args.output)
-    ctx.output_dir.mkdir(parents=True, exist_ok=True)
-
     pdfs = sorted(input_dir.glob("*.pdf"))
     if not pdfs:
         logger.info("No PDFs found in %s", input_dir)
