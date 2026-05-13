@@ -201,13 +201,13 @@ An earlier iteration of the wiki parsed markdown with string scraping to pull ou
 
 **The fix**: YAML frontmatter. Each issuer page now starts with a fenced YAML block holding the machine-readable rules (regex patterns, required fields, version, timestamps). That block parses into a Pydantic `IssuerRules` model via `yaml.safe_load`. The markdown body below the frontmatter is reserved for human observations and optional LLM context, and is **never** parsed as rules. One file, one source of truth, deterministic parsing.
 
-**Write-time validation**: `compile_correction()` accepts structured `patterns` and `required_fields` kwargs. Before writing, every regex is compiled via `re.compile`. If any pattern is invalid, `compile_correction` raises `re.error` and the write is aborted. Broken rules never land in the wiki.
+**Write-time validation**: human corrections land in the wiki via `KnowledgeWiki.promote_human_correction(entity_key, sub_kind, frontmatter_patch)`. Patch validation (e.g., regex compilation) is the caller's responsibility — `card_extractor/review_workflow.py` is the only caller and constructs the patch from reviewed `ReviewItem`s. If any pattern is invalid, the regex compile step raises `re.error` at validation time, not at wiki-write time. Broken rules never enter the patch dict in the first place.
 
-**Read-time validation**: `get_extraction_hints()` runs `yaml.safe_load` then validates the result into `IssuerRules`. Malformed YAML or Pydantic validation failure logs ERROR and returns an empty dict. `validation.py::_check_wiki_patterns` pre-compiles each regex and logs ERROR on failure (skipping the one bad pattern rather than killing the whole validation pass). In both cases the system fails **loud**, not silent — see §12.
+**Read-time validation**: `KnowledgeWiki.get_rules(entity_key, sub_kind)` runs `yaml.safe_load` and returns the raw dict; `get_typed_rules(...)` parses the frontmatter into `IssuerRules` (Pydantic) using the `rules_model=IssuerRules` set at wiki construction time. Malformed YAML or Pydantic validation failure logs ERROR and returns `{}` / `None`. `validation.py::_check_wiki_patterns` pre-compiles each regex and logs ERROR on failure (skipping the one bad pattern rather than killing the whole validation pass). In both cases the system fails **loud**, not silent — see §12.
 
 **Karpathy preservation**: The "wiki as compounding artifact" pattern is intact. Humans and LLMs still read the markdown body. Only the rules engine reads the frontmatter. The frontmatter's schema is documented in `knowledge/schema.md`; new issuer pages are bootstrapped from `knowledge/issuers/_template.md` which starts with an empty frontmatter block.
 
-**Concurrency**: `CardKnowledgeWiki` now holds an `asyncio.Lock`. `write_observation()`, `update_index()`, and `compile_correction()` are async and acquire the lock before mutating a page. This prevents the interleaved-write race that would corrupt the YAML block under concurrent requests. `review.py::compile_reviewed_to_wiki()` is async accordingly.
+**Concurrency**: `knowledge_wiki.KnowledgeWiki` holds an `asyncio.Lock`. `write_observation()` and `update_index()` are async and acquire the lock before mutating a page. `promote_human_correction()` is **synchronous** and does NOT acquire the lock (this is a deliberate tool-API choice — corrections are a control-plane operation). The harness's `card_extractor/review_workflow.py::ReviewWorkflow.compile_reviewed_to_wiki()` wraps each `promote_human_correction` call in `async with wiki._lock:` to serialize against concurrent observation writes from the agent loop. This prevents the interleaved-read/modify/write race that would corrupt the YAML block under concurrent requests.
 
 ### The problem: models don't learn from individual runs
 
@@ -298,9 +298,9 @@ Security is not an after-thought here — it's a requirement gate for shipping t
 - **Filename collisions on concurrent uploads**: each request generates `run_id = uuid.uuid4()` and writes artifacts to `output_dir/run_id/`. Two clients uploading identically-named PDFs at the same time no longer clobber each other's output.
 - **Upload DoS via RAM pressure**: PDF uploads are streamed in 1 MB chunks with on-the-fly size enforcement, rather than read entirely into memory before the size check. The 50 MB cap still applies.
 - **Invalid review statuses**: `ReviewSubmission.status` is now `Literal["approved", "corrected", "rejected"]`. FastAPI rejects unknown statuses at the API boundary with a 422 before any handler runs.
-- **Race on concurrent wiki writes**: `asyncio.Lock` on `CardKnowledgeWiki` serializes all mutations. See §5.
+- **Race on concurrent wiki writes**: `knowledge_wiki.KnowledgeWiki`'s `asyncio.Lock` serializes `write_observation`/`update_index`. `promote_human_correction` is sync; the harness's `ReviewWorkflow.compile_reviewed_to_wiki` per-item-acquires the same lock to serialize against the agent loop. See §5.
 - **Rule poisoning via silent regex failures**: `_check_wiki_patterns` previously swallowed `re.error` silently. It now logs ERROR and skips only the bad pattern. A wiki that accumulated a broken rule no longer silently ceased to validate that issuer.
-- **Rule poisoning at write time**: `compile_correction()` validates every regex compiles before writing. Invalid patterns raise `re.error` and the wiki is unchanged.
+- **Rule poisoning at write time**: the harness's `review_workflow.py` validates every regex in a correction's `frontmatter_patch` compiles before calling `promote_human_correction`. Invalid patterns raise `re.error` upstream of the wiki write and the wiki is unchanged.
 - **Cheap liveness check**: `/health/live` returns 200 immediately with no dependency probe — suitable for container orchestrator liveness checks that shouldn't cascade failures on gateway blips. `/health/ready` retains the gateway dependency check for readiness. `/health` aliases `/health/ready` for backward compatibility.
 
 ---
@@ -407,7 +407,7 @@ If you're editing this codebase, these are the principles to preserve:
 6. **Failure isolation.** Per-PDF errors don't halt the batch. Per-crop errors don't halt the PDF. Per-step errors don't halt the crop. The pipeline degrades gracefully.
 7. **Licensing is non-negotiable.** Every dependency checked against permissive-license criteria before it's added. No AGPL anywhere, no vendor lock-in.
 8. **Machine-critical data uses typed schemas, not string parsing.** Wiki rules live in YAML frontmatter parsed into `IssuerRules`. Review submission status is a `Literal`. Pipeline I/O is Pydantic end-to-end. If a machine reads it, it has a schema; if a human reads it, prose is fine.
-9. **Fail loudly on rule parsing errors.** Silent degradation of validation is a rule-poisoning vector — a wiki that quietly stops enforcing its regexes looks identical to one that's working. Bad regex, bad YAML, bad frontmatter, invalid `IssuerRules`: all log ERROR. Writes with invalid patterns are rejected at `compile_correction()`. The system prefers a visible failure over a silent one.
+9. **Fail loudly on rule parsing errors.** Silent degradation of validation is a rule-poisoning vector — a wiki that quietly stops enforcing its regexes looks identical to one that's working. Bad regex, bad YAML, bad frontmatter, invalid `IssuerRules`: all log ERROR. Writes with invalid patterns are rejected at the harness's correction-validation step before reaching `KnowledgeWiki.promote_human_correction()`. The system prefers a visible failure over a silent one.
 
 ---
 

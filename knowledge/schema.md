@@ -50,9 +50,10 @@ last_human_correction: ''
 - The body holds layout observations, sample value patterns with PII
   masked, and an append-only observation log.
 - Bodies may be injected as LLM context for display/lookup. For extraction
-  calls prefer injecting only the compact rules summary (see
-  `prompts.format_rules_for_injection`), not the full markdown — saves
-  tokens and removes noise.
+  calls prefer injecting only the compact rules summary built from
+  `wiki.get_rules(entity_key, sub_kind)` (the raw YAML frontmatter as a
+  dict), not the full markdown body — saves tokens and removes noise.
+  Callers stringify the rules dict at the prompt-assembly site.
 
 ## Frontmatter schema (`IssuerRules`)
 
@@ -91,8 +92,12 @@ Each observation block in the body must include:
 
 Human corrections are the highest-priority input and are the ONLY path by
 which `patterns` / `required_fields` in the frontmatter are modified.
-`compile_correction()` validates every regex compiles before writing and
-bumps `version`.
+`KnowledgeWiki.promote_human_correction(entity_key, sub_kind,
+frontmatter_patch)` shallow-merges the patch into the existing
+frontmatter and bumps `version`. The harness's `review_workflow.py`
+validates every regex in the patch compiles before invoking
+`promote_human_correction` — invalid patterns raise `re.error` upstream
+of the wiki write, so broken rules never land.
 
 ## Index maintenance
 
