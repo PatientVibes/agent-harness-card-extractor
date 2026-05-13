@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 — 2026-05-13
+
+### Fixed
+- **Vendored prompt drift.** `card_extractor/prompts/extraction_with_context.md:3` referenced `format_rules_for_injection(IssuerRules)` — a function that was deleted in v0.2.0's prompts.py rewrite. Fixed upstream in the `vlm-card-extraction-prompts` skill (commit `0869e14`) to point at `wiki.get_rules(entity_key, sub_kind)` from the `knowledge_wiki` tool, then re-vendored into the harness. No runtime effect (the placeholder doc is informational; the actual `{wiki_context}` substitution happens at prompt-assembly time in `agent.py`).
+
+### Removed
+- **`card_extractor.models.ReviewItem`** Pydantic class. Replaced by the `review_queue` tool's `ReviewItem` in v0.2.0, but the harness model lingered because `tests/test_models.py::TestReviewItem::test_creation` referenced it. Removed both the class and the test — the new tool's `ReviewItem` is used everywhere `review_workflow.py` cares about review-item shape.
+
 ## 0.2.0 — 2026-05-13
 
 ### Changed

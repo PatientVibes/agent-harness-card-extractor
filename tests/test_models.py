@@ -12,7 +12,6 @@ from card_extractor.models import (
     CardRegion,
     GovernmentData,
     InsuranceData,
-    ReviewItem,
     RunManifest,
     ValidationIssue,
     ValidationResult,
@@ -120,14 +119,3 @@ class TestRunManifest:
         assert m.total_cards_detected == 0
 
 
-class TestReviewItem:
-    def test_creation(self, sample_insurance_extraction):
-        item = ReviewItem(
-            id="test-001",
-            source_pdf="DOC-123.pdf",
-            page=1,
-            crop_path="/tmp/crop.png",
-            extraction=sample_insurance_extraction,
-        )
-        assert item.status == "pending"
-        assert item.human_correction is None

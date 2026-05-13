@@ -116,27 +116,6 @@ class ValidationResult(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Human review queue
-# ---------------------------------------------------------------------------
-
-
-class ReviewItem(BaseModel):
-    """An extraction flagged for human review."""
-
-    id: str
-    source_pdf: str
-    page: int
-    box_index: int = 0
-    crop_path: str
-    extraction: CardExtraction
-    validation: ValidationResult = Field(default_factory=ValidationResult)
-    wiki_context: str = ""
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    status: Literal["pending", "approved", "corrected", "rejected"] = "pending"
-    human_correction: Optional[CardExtraction] = None
-
-
-# ---------------------------------------------------------------------------
 # Wiki rules (YAML frontmatter schema)
 # ---------------------------------------------------------------------------
 
