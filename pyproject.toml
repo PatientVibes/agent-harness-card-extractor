@@ -1,6 +1,6 @@
 [project]
 name = "agent-harness-card-extractor"
-version = "0.2.0"
+version = "0.2.1"
 description = "ID card and insurance card data extraction agent — LangChain VLM pipeline with Karpathy-style knowledge wiki and human review queue. 12-component harness."
 requires-python = ">=3.11"
 license = { text = "MIT" }
