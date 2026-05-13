@@ -21,7 +21,7 @@ load_dotenv()
 from card_extractor.agent import AgentContext, process_pdf
 from card_extractor.ai_client import GatewayConfig
 from card_extractor.review import ReviewQueue
-from card_extractor.trace import PipelineTrace
+from pipeline_trace import PipelineTrace
 from card_extractor.wiki import CardKnowledgeWiki
 
 

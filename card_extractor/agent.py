@@ -63,7 +63,7 @@ from card_extractor.rendering import (
     preprocess_for_vlm,
 )
 from card_extractor.review import ReviewQueue
-from card_extractor.trace import PipelineTrace
+from pipeline_trace import PipelineTrace
 from card_extractor.validation import validate_extraction
 from card_extractor.wiki import CardKnowledgeWiki
 
@@ -251,10 +251,11 @@ def _parse_structured_result(
 
     # Record in trace
     if trace:
-        trace.vlm_call(
+        trace.event(
+            "vlm_call",
             source=source, model=model_name,
             input_tokens=input_tokens, output_tokens=output_tokens,
-            latency_s=latency_s, result_summary=result_summary,
+            latency_s=round(latency_s, 2), result=result_summary,
         )
 
     return parsed
@@ -490,7 +491,8 @@ async def _extract_single_card(
 
     # Trace extraction result
     if ctx.trace:
-        ctx.trace.extraction_result(
+        ctx.trace.event(
+            "extraction",
             crop=crop_path.name, card_type=extraction.card_type,
             confidence=extraction.confidence, issuer_hint=extraction.issuer_hint,
             valid=validation.valid, issues=[i.issue for i in validation.issues],
@@ -509,7 +511,7 @@ async def _extract_single_card(
         )
         if ctx.trace:
             reason = "invalid" if not validation.valid else f"low confidence ({adjusted_confidence:.2f})"
-            ctx.trace.review_flagged(crop_path.name, reason, adjusted_confidence)
+            ctx.trace.event("review_flagged", crop=crop_path.name, reason=reason, confidence=adjusted_confidence)
         if not validation.valid:
             logger.info("Suppressed invalid extraction for %s", crop_path.name)
             return None
@@ -525,7 +527,7 @@ async def _extract_single_card(
     if extraction.issuer_hint:
         await _update_wiki_observation(extraction, ctx, source_pdf)
         if ctx.trace:
-            ctx.trace.wiki_update(extraction.issuer_hint, extraction.card_type, source_pdf)
+            ctx.trace.event("wiki_update", issuer=extraction.issuer_hint, card_type=extraction.card_type, source_pdf=source_pdf)
 
     return extraction
 
@@ -599,17 +601,18 @@ async def process_page(
     back_count = sum(1 for b in region.boxes if b.card_type == "Back") if region.boxes else 0
     unknown_count = sum(1 for b in region.boxes if b.card_type == "Unknown") if region.boxes else 0
     if ctx.trace:
-        ctx.trace.detection_result(
+        ctx.trace.event(
+            "detection",
             page=page_png.name, card_found=region.card_found,
-            box_count=len(region.boxes) if region.boxes else 0,
-            front_count=front_count, back_count=back_count, unknown_count=unknown_count,
+            boxes=len(region.boxes) if region.boxes else 0,
+            front=front_count, back=back_count, unknown=unknown_count,
         )
 
     # Step 1b: Full-page fallback if no cards detected
     if not region.card_found or not region.boxes:
         logger.info("No cards detected on %s -- trying full-page fallback", page_png.name)
         if ctx.trace:
-            ctx.trace.fallback_triggered(page_png.name, "no cards detected")
+            ctx.trace.event("fallback", page=page_png.name, reason="no cards detected")
         return await _full_page_fallback(page_png, ctx, source_pdf, page_num)
 
     # Save debug visualization
@@ -645,14 +648,14 @@ async def process_page(
                 if verdict.verdict in ("BACK", "NOT_A_CARD"):
                     logger.info("Vetoed %s (verdict=%s)", crop_path.name, verdict.verdict)
                     if ctx.trace:
-                        ctx.trace.verification_decision(crop_path.name, box.card_type, "vetoed", verdict.verdict)
+                        ctx.trace.event("verification", crop=crop_path.name, box_label=box.card_type, action="vetoed", verdict=verdict.verdict)
                     continue
                 if ctx.trace:
-                    ctx.trace.verification_decision(crop_path.name, box.card_type, "verified", verdict.verdict)
+                    ctx.trace.event("verification", crop=crop_path.name, box_label=box.card_type, action="verified", verdict=verdict.verdict)
             else:
                 # Front-labeled: skip VLM call entirely
                 if ctx.trace:
-                    ctx.trace.verification_decision(crop_path.name, box.card_type, "skipped", "Front")
+                    ctx.trace.event("verification", crop=crop_path.name, box_label=box.card_type, action="skipped", verdict="Front")
 
             # Steps 4-6: Extract, validate, wiki update
             extraction = await _extract_single_card(
@@ -684,9 +687,10 @@ async def process_page(
             mismatch = cards_on_page > actual_extractions + back_count
 
             if ctx.trace:
-                ctx.trace.audit_result(
-                    page_png.name, vlm_count=cards_on_page,
-                    extracted_count=actual_extractions, back_count=back_count,
+                ctx.trace.event(
+                    "audit",
+                    page=page_png.name, vlm_sees=cards_on_page,
+                    extracted=actual_extractions, backs=back_count,
                     mismatch=mismatch,
                 )
 
@@ -702,9 +706,10 @@ async def process_page(
         except Exception as e:
             logger.warning("Audit failed on %s: %s (non-fatal)", page_png.name, e)
     elif ctx.trace:
-        ctx.trace.audit_skipped(
-            page_png.name,
-            f"all {expected_extractions} crops extracted successfully" if actual_extractions == expected_extractions
+        ctx.trace.event(
+            "audit_skipped",
+            page=page_png.name,
+            reason=f"all {expected_extractions} crops extracted successfully" if actual_extractions == expected_extractions
             else "audit disabled",
         )
 
@@ -790,23 +795,23 @@ async def process_pdf(
     except Exception as e:
         logger.error("PDF render failed on %s: %s", pdf_path.name, e)
         if ctx.trace:
-            ctx.trace.error("render", pdf_path.name, str(e))
+            ctx.trace.event("error", source="render", page=pdf_path.name, message=str(e))
         return []
 
     if ctx.trace:
-        ctx.trace.pdf_start(pdf_path.name, len(page_pngs))
+        ctx.trace.event("pdf_start", pdf=pdf_path.name, pages=len(page_pngs))
 
     all_extractions: list[CardExtraction] = []
     for page_num, page_png in enumerate(page_pngs, start=1):
         if ctx.trace:
-            ctx.trace.page_start(pdf_path.name, page_num)
+            ctx.trace.event("page_start", pdf=pdf_path.name, page=page_num)
         extractions = await process_page(
             page_png, ctx, source_pdf=pdf_path.name, page_num=page_num,
         )
         all_extractions.extend(extractions)
 
     if ctx.trace:
-        ctx.trace.pdf_end(pdf_path.name, len(all_extractions), time.time() - t0)
+        ctx.trace.event("pdf_end", pdf=pdf_path.name, extractions=len(all_extractions), time_s=round(time.time() - t0, 2))
 
     return all_extractions
 

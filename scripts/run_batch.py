@@ -17,7 +17,7 @@ load_dotenv()
 
 from card_extractor.agent import AgentContext, process_batch
 from card_extractor.models import RunManifest
-from card_extractor.trace import PipelineTrace
+from pipeline_trace import PipelineTrace
 
 
 logging.basicConfig(
