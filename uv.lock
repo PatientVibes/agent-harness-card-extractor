@@ -4,19 +4,22 @@ requires-python = ">=3.11"
 
 [[package]]
 name = "agent-harness-card-extractor"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
+    { name = "agent-tool-knowledge-wiki" },
+    { name = "agent-tool-llm-utils" },
+    { name = "agent-tool-pdf-vlm-renderer" },
+    { name = "agent-tool-pipeline-trace" },
+    { name = "agent-tool-review-queue" },
+    { name = "agent-tool-token-tracker" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "langchain-core" },
     { name = "langchain-openai" },
-    { name = "pillow" },
     { name = "pydantic" },
-    { name = "pypdfium2" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
-    { name = "pyyaml" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -30,23 +33,71 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "agent-tool-knowledge-wiki", git = "https://github.com/PatientVibes/agent-tool-knowledge-wiki.git?rev=f415049abfab46b2e1e5c0dbf2a894852ae2911f" },
+    { name = "agent-tool-llm-utils", git = "https://github.com/PatientVibes/agent-tool-llm-utils.git?rev=cfdf9aba6aa0ccc9c37860a9bef53853e4504237" },
+    { name = "agent-tool-pdf-vlm-renderer", git = "https://github.com/PatientVibes/agent-tool-pdf-vlm-renderer.git?rev=e59314d8d5729cecd59a3277ce864909228c11d5" },
+    { name = "agent-tool-pipeline-trace", git = "https://github.com/PatientVibes/agent-tool-pipeline-trace.git?rev=54545a8c48a2e9daef571ca0491d0fbd646b159c" },
+    { name = "agent-tool-review-queue", git = "https://github.com/PatientVibes/agent-tool-review-queue.git?rev=ed286672939921786d4d3c471f4aa4494a812442" },
+    { name = "agent-tool-token-tracker", git = "https://github.com/PatientVibes/agent-tool-token-tracker.git?rev=d16943fdb0516f386ac798e1527526775ef52af1" },
     { name = "fastapi", specifier = ">=0.110" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "langchain-core", specifier = ">=0.3" },
     { name = "langchain-openai", specifier = ">=0.3" },
-    { name = "pillow", specifier = ">=10.0" },
     { name = "pip-licenses", marker = "extra == 'dev'", specifier = ">=4.0" },
     { name = "pydantic", specifier = ">=2.0" },
-    { name = "pypdfium2", specifier = ">=4.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "python-multipart", specifier = ">=0.0.9" },
-    { name = "pyyaml", specifier = ">=6.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.29" },
 ]
 provides-extras = ["dev"]
+
+[[package]]
+name = "agent-tool-knowledge-wiki"
+version = "0.1.0"
+source = { git = "https://github.com/PatientVibes/agent-tool-knowledge-wiki.git?rev=f415049abfab46b2e1e5c0dbf2a894852ae2911f#f415049abfab46b2e1e5c0dbf2a894852ae2911f" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "pyyaml" },
+]
+
+[[package]]
+name = "agent-tool-llm-utils"
+version = "0.1.0"
+source = { git = "https://github.com/PatientVibes/agent-tool-llm-utils.git?rev=cfdf9aba6aa0ccc9c37860a9bef53853e4504237#cfdf9aba6aa0ccc9c37860a9bef53853e4504237" }
+
+[[package]]
+name = "agent-tool-pdf-vlm-renderer"
+version = "0.1.0"
+source = { git = "https://github.com/PatientVibes/agent-tool-pdf-vlm-renderer.git?rev=e59314d8d5729cecd59a3277ce864909228c11d5#e59314d8d5729cecd59a3277ce864909228c11d5" }
+dependencies = [
+    { name = "pillow" },
+    { name = "pydantic" },
+    { name = "pypdfium2" },
+]
+
+[[package]]
+name = "agent-tool-pipeline-trace"
+version = "0.1.0"
+source = { git = "https://github.com/PatientVibes/agent-tool-pipeline-trace.git?rev=54545a8c48a2e9daef571ca0491d0fbd646b159c#54545a8c48a2e9daef571ca0491d0fbd646b159c" }
+
+[[package]]
+name = "agent-tool-review-queue"
+version = "0.1.0"
+source = { git = "https://github.com/PatientVibes/agent-tool-review-queue.git?rev=ed286672939921786d4d3c471f4aa4494a812442#ed286672939921786d4d3c471f4aa4494a812442" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[[package]]
+name = "agent-tool-token-tracker"
+version = "0.1.0"
+source = { git = "https://github.com/PatientVibes/agent-tool-token-tracker.git?rev=d16943fdb0516f386ac798e1527526775ef52af1#d16943fdb0516f386ac798e1527526775ef52af1" }
+dependencies = [
+    { name = "pydantic" },
+]
 
 [[package]]
 name = "annotated-doc"

@@ -1,6 +1,6 @@
 [project]
 name = "agent-harness-card-extractor"
-version = "0.1.0"
+version = "0.2.0"
 description = "ID card and insurance card data extraction agent — LangChain VLM pipeline with Karpathy-style knowledge wiki and human review queue. 12-component harness."
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -12,11 +12,14 @@ dependencies = [
     "httpx>=0.27",
     "langchain-core>=0.3",
     "langchain-openai>=0.3",
-    "pypdfium2>=4.0",
-    "Pillow>=10.0",
     "pydantic>=2.0",
     "python-dotenv>=1.0",
-    "PyYAML>=6.0",
+    "agent-tool-pdf-vlm-renderer",
+    "agent-tool-knowledge-wiki",
+    "agent-tool-review-queue",
+    "agent-tool-pipeline-trace",
+    "agent-tool-token-tracker",
+    "agent-tool-llm-utils",
 ]
 
 [project.optional-dependencies]
@@ -41,3 +44,11 @@ asyncio_mode = "auto"
 markers = [
     "integration: marks tests requiring API key and network access",
 ]
+
+[tool.uv.sources]
+agent-tool-pdf-vlm-renderer = { git = "https://github.com/PatientVibes/agent-tool-pdf-vlm-renderer.git", rev = "e59314d8d5729cecd59a3277ce864909228c11d5" }
+agent-tool-knowledge-wiki    = { git = "https://github.com/PatientVibes/agent-tool-knowledge-wiki.git",    rev = "f415049abfab46b2e1e5c0dbf2a894852ae2911f" }
+agent-tool-review-queue      = { git = "https://github.com/PatientVibes/agent-tool-review-queue.git",      rev = "ed286672939921786d4d3c471f4aa4494a812442" }
+agent-tool-pipeline-trace    = { git = "https://github.com/PatientVibes/agent-tool-pipeline-trace.git",    rev = "54545a8c48a2e9daef571ca0491d0fbd646b159c" }
+agent-tool-token-tracker     = { git = "https://github.com/PatientVibes/agent-tool-token-tracker.git",     rev = "d16943fdb0516f386ac798e1527526775ef52af1" }
+agent-tool-llm-utils         = { git = "https://github.com/PatientVibes/agent-tool-llm-utils.git",         rev = "cfdf9aba6aa0ccc9c37860a9bef53853e4504237" }
