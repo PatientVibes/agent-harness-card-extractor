@@ -64,7 +64,7 @@ from pdf_vlm_renderer import (
     preprocess_for_vlm,
 )
 from card_extractor.coords import norm_to_px, norm_to_px_for_image
-from card_extractor.review import ReviewQueue
+from card_extractor.review_workflow import ReviewWorkflow
 from pipeline_trace import PipelineTrace
 from card_extractor.validation import validate_extraction
 from knowledge_wiki import KnowledgeWiki
@@ -90,7 +90,7 @@ class DurableContext:
 
     config: GatewayConfig
     wiki: KnowledgeWiki
-    review_queue: ReviewQueue
+    review_queue: ReviewWorkflow
     output_dir: Path = field(default_factory=lambda: Path("./output"))
     render_dpi: int = 300
     crop_pad_px: int = 10
@@ -111,7 +111,7 @@ class DurableContext:
         return cls(
             config=config,
             wiki=KnowledgeWiki(wiki_dir, entity_dir_name="issuers", rules_model=IssuerRules),
-            review_queue=ReviewQueue(queue_dir),
+            review_queue=ReviewWorkflow(queue_dir),
             output_dir=output_dir,
             render_dpi=int(os.environ.get("RENDER_DPI", "300")),
             crop_pad_px=int(os.environ.get("CROP_PAD_PX", "10")),
@@ -136,7 +136,7 @@ class AgentContext:
 
     config: GatewayConfig
     wiki: KnowledgeWiki
-    review_queue: ReviewQueue
+    review_queue: ReviewWorkflow
     tracker: TokenTracker = field(default_factory=TokenTracker)
     trace: Optional[PipelineTrace] = None
     output_dir: Path = field(default_factory=lambda: Path("./output"))

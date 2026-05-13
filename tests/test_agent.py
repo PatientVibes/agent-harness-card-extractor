@@ -25,13 +25,13 @@ def ctx(tmp_path):
         pytest.skip("AI_GATEWAY_KEY not set")
 
     from card_extractor.models import IssuerRules
-    from card_extractor.review import ReviewQueue
+    from card_extractor.review_workflow import ReviewWorkflow
     from knowledge_wiki import KnowledgeWiki
 
     return AgentContext(
         config=config,
         wiki=KnowledgeWiki(tmp_path / "wiki", entity_dir_name="issuers", rules_model=IssuerRules),
-        review_queue=ReviewQueue(tmp_path / "queue"),
+        review_queue=ReviewWorkflow(tmp_path / "queue"),
         output_dir=tmp_path / "output",
     )
 

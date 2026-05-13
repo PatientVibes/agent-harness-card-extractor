@@ -209,7 +209,9 @@ async def submit_review(item_id: str, body: ReviewSubmission):
     if item is None:
         raise HTTPException(404, f"Review item {item_id} not found")
 
-    # If corrected, compile to wiki
+    # If corrected, compile to wiki. ReviewWorkflow.compile_reviewed_to_wiki
+    # filters on extras["status"] == "corrected" internally; pass durable.wiki
+    # directly.
     if body.status == "corrected" and body.correction:
         count = await durable.review_queue.compile_reviewed_to_wiki(durable.wiki)
         return {"item": item.model_dump(), "wiki_updates": count}

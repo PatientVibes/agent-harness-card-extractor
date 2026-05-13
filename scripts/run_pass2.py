@@ -20,7 +20,7 @@ load_dotenv()
 
 from card_extractor.agent import AgentContext, process_pdf
 from card_extractor.ai_client import GatewayConfig
-from card_extractor.review import ReviewQueue
+from card_extractor.review_workflow import ReviewWorkflow
 from pipeline_trace import PipelineTrace
 from card_extractor.models import IssuerRules
 from knowledge_wiki import KnowledgeWiki
@@ -59,7 +59,7 @@ async def main():
     ctx = AgentContext(
         config=config,
         wiki=KnowledgeWiki(wiki_dir, entity_dir_name="issuers", rules_model=IssuerRules),
-        review_queue=ReviewQueue(queue_dir),
+        review_queue=ReviewWorkflow(queue_dir),
         trace=trace,
         output_dir=output_dir,
         render_dpi=200,
