@@ -63,7 +63,7 @@ PDF -> render (pypdfium2) -> preprocess (autocontrast)
 
 ## Testing
 
-- 55 unit tests in `tests/`, no API key needed
+- 54 unit tests in `tests/`, no API key needed
 - Integration tests marked `@pytest.mark.integration` require `AI_GATEWAY_KEY`
 - Experiment runner at `scripts/experiment.py` for parameter sweeps
 

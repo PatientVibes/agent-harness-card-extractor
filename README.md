@@ -125,6 +125,10 @@ python scripts/run_batch.py --input ./input/ --output ./output/
 | Subagent orchestration | Semaphore-bounded `_subagent` per PDF; `_full_page_fallback` when detection finds no cards |
 | Token tracking | `token_tracker.TokenTracker` records every VLM call; `pipeline_trace.PipelineTrace` writes JSONL trace per run via generic `trace.event(event_type=..., ...)` |
 
+## Related projects
+
+- [`agent-app-card-extractor`](https://github.com/PatientVibes/agent-app-card-extractor) — installable desktop-style sibling app built on this harness. Provides a file-drop UI, JSON/XML previewer, WebSocket chat for interactive field corrections, and a PyInstaller single-file installer. Consumes this harness as a versioned pip dependency. The spec and per-plan implementation docs for that project live in [`docs/superpowers/`](docs/superpowers/) in this repo.
+
 ## Related skills
 
 - [`vlm-card-extraction-prompts`](https://github.com/PatientVibes/agent-skills/tree/master/plugins/vlm-card-extraction-prompts) — the 6 VLM prompts under `card_extractor/prompts/` are vendored verbatim from this skill. Edit upstream + re-vendor; do not edit the .md files in this dir.
