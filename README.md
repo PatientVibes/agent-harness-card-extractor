@@ -113,6 +113,8 @@ python scripts/run_batch.py --input ./input/ --output ./output/
 | `WIKI_DIR` | `./knowledge` | Karpathy-style learning wiki location |
 | `REVIEW_QUEUE_DIR` | `./review_queue` | Human-review queue location |
 | `OUTPUT_DIR` | `./output` | Extracted-JSON output location |
+| `ENABLE_AUDIT` | `1` | Enable the evaluator audit step (VLM card-count check). Set to `0` to disable. |
+| `ENABLE_PREPROCESSING` | `1` | Enable image autocontrast preprocessing before VLM calls. Set to `0` to disable. |
 
 ## 12-component harness implementation
 

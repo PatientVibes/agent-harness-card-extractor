@@ -1,4 +1,4 @@
-# Agent Instructions
+# AGENTS.md
 
 ID card and insurance card data extraction pipeline. A LangChain agent harness accepts PDF uploads, renders pages via `pypdfium2`, detects card regions with a VLM, crops and extracts structured data using `with_structured_output`, validates against a Karpathy-style knowledge wiki, flags low-confidence results for human review, and writes a structured JSONL trace of every decision. The project is MIT-licensed; all dependencies must remain permissively licensed.
 
