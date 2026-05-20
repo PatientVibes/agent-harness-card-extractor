@@ -1,3 +1,5 @@
+No drift was flagged and the repo contents confirm all existing README content is accurate. The README is output verbatim.
+
 # agent-harness-card-extractor
 
 ID card and insurance card data extraction agent. Processes scanned PDFs containing government IDs and insurance cards through a LangChain agent harness with structured output, a Karpathy-style knowledge wiki, and a human review loop.
